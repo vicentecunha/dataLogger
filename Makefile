@@ -9,7 +9,7 @@ ODIR=./obj
 _OBJ=rs232.o signalHandler.o dataLogger.o
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
-EXE=dataLogger.exe
+EXE=dataLogger
 INSTALLPATH=../out
 
 LLIBS=-lpthread

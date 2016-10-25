@@ -10,7 +10,7 @@
 #include <cstdlib>	// exit
 #include <thread>		// thread
 #include <fstream>	// open file
-#include <stdlib.h>
+#include <ctime>		// timestamp
 
 #include "signalHandler.hpp"
 #include "rs232.h"
@@ -31,6 +31,8 @@ int main()
 	cerr << "Starting dataLogger." << endl;
 
 /*
+	USER INPUT MODE:
+
 	cerr << "Baudrate: ";
 	int baudrate;
 	cin >> baudrate;
@@ -41,23 +43,10 @@ int main()
 */
 
 	int baudrate = 9600;
-	int serialPortNumber = 24;
-
-	cerr << "Opening serial port " << serialPortNumber << " (COM" << serialPortNumber+1 << ")." << endl;
-	if(!openPort(serialPortNumber, baudrate))
-	{
-		exit(EXIT_FAILURE);
-	}
-
-	cerr << "Filename to log data: ";
-	string filename;
-	cin >> filename;
-	ofstream logFile;
-	logFile.open(filename, ios::out);
-
-	cerr << "Press CTRL+Z at any time to print a stamp line to logFile." << endl;
-
+	int serialPortNumber = 16;
+	if(!openPort(serialPortNumber, baudrate)) exit(EXIT_FAILURE);
 	uint8_t rxBuffer[4096];
+
 	try
 	{
 		SignalHandler signalHandler;
@@ -65,28 +54,24 @@ int main()
 
 		while(!signalHandler.gotExitSignal())
 		{
-			if (signalHandler.gotStampSignal())
-			{
-				signalHandler.setStampSignal(false);
-				cout    << "========== User Stamp ==========" << endl;
-				logFile << "========== User Stamp ==========" << endl;
-			}
 			if (int numberOfReceivedBytes = RS232_PollComport(serialPortNumber, rxBuffer, 4096))
 			{
 				for (uint16_t i = 0; i < numberOfReceivedBytes; i++)
 				{
-					cout    << rxBuffer[i];
-					logFile << rxBuffer[i];
+					cout << rxBuffer[i];
+					if (rxBuffer[i] == '\n')
+					{
+						time_t timer;
+						if ((timer = time(nullptr)) == -1) exit(EXIT_FAILURE);
+						cout << timer << '\t';
+					}
 					rxBuffer[i] = '\0';
 				}
-				cout.flush();
 			}
 			this_thread::sleep_for(chrono::milliseconds(1));
 		}
 
-		cout << " ... kill signal detected. Exiting dataLogger." << endl;
-		logFile.flush();
-		logFile.close();
+		cerr << " ... kill signal detected. Exiting dataLogger." << endl;
 		exit(EXIT_SUCCESS);
 	}
 	catch (SignalException& e)
